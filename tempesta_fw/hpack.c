@@ -2586,15 +2586,14 @@ tfw_hpack_rbtree_ins_rebalance(TfwHPackETbl *__restrict tbl,
 static void
 tfw_hpack_rbtree_del_rebalance(TfwHPackETbl *__restrict tbl,
 			       TfwHPackNode *__restrict nchild,
-			       TfwHPackNode *__restrict parent,
-			       bool left)
+			       TfwHPackNode *__restrict parent)
 {
 	BUG_ON(!tbl->root);
 
 	while (!nchild || (nchild != tbl->root && HPACK_RB_IS_BLACK(nchild))) {
 		TfwHPackNode *brother, *l_neph, *r_neph;
 
-		if (left) {
+		if (nchild == HPACK_NODE_COND(tbl, parent->left)) {
 			BUG_ON(HPACK_NODE_EMPTY(parent->right));
 			brother = HPACK_NODE(tbl, parent->right);
 			if (HPACK_RB_IS_RED(brother)) {
@@ -2698,12 +2697,11 @@ tfw_hpack_rbtree_min(TfwHPackETbl *__restrict tbl,
 /*
  * Procedure for branches replacement in red-black tree.
  */
-static inline bool
+static inline void
 tfw_hpack_rbtree_replace(TfwHPackETbl *__restrict tbl,
 			 TfwHPackNode *__restrict old,
 			 TfwHPackNode *__restrict new)
 {
-	bool left = true;
 	TfwHPackNode *parent = HPACK_NODE_COND(tbl, old->parent);
 
 	BUG_ON(!old);
@@ -2722,13 +2720,10 @@ tfw_hpack_rbtree_replace(TfwHPackETbl *__restrict tbl,
 		WARN_ON_ONCE(HPACK_NODE_EMPTY(parent->right)
 			     || old != HPACK_NODE(tbl, parent->right));
 		parent->right = HPACK_NODE_COND_OFF(tbl, new);
-		left = false;
 	}
 
 	if (new)
 		new->parent = HPACK_NODE_COND_OFF(tbl, parent);
-
-	return left;
 }
 
 /*
@@ -2826,15 +2821,15 @@ tfw_hpack_rbtree_erase(TfwHPackETbl *__restrict tbl,
 {
 	TfwHPackNode *nchild, *sv = node;
 	TfwHPackNode *parent = HPACK_NODE_COND(tbl, node->parent);
-	bool left_child = false, sv_black = HPACK_RB_IS_BLACK(sv);
+	bool sv_black = HPACK_RB_IS_BLACK(sv);
 
 	if (HPACK_NODE_EMPTY(node->left)) {
 		nchild = HPACK_NODE_COND(tbl, node->right);
-		left_child = tfw_hpack_rbtree_replace(tbl, node, nchild);
+		tfw_hpack_rbtree_replace(tbl, node, nchild);
 	}
 	else if (HPACK_NODE_EMPTY(node->right)) {
 		nchild = HPACK_NODE_COND(tbl, node->left);
-		left_child = tfw_hpack_rbtree_replace(tbl, node, nchild);
+		tfw_hpack_rbtree_replace(tbl, node, nchild);
 	}
 	else {
 		TfwHPackNode *n_left;
@@ -2848,7 +2843,7 @@ tfw_hpack_rbtree_erase(TfwHPackETbl *__restrict tbl,
 			TfwHPackNode *n_right;
 
 			parent = HPACK_NODE(tbl, sv->parent);
-			left_child = tfw_hpack_rbtree_replace(tbl, sv, nchild);
+			tfw_hpack_rbtree_replace(tbl, sv, nchild);
 
 			n_right = HPACK_NODE(tbl, node->right);
 			n_right->parent = HPACK_NODE_OFF(tbl, sv);
@@ -2873,7 +2868,7 @@ tfw_hpack_rbtree_erase(TfwHPackETbl *__restrict tbl,
 	 * the last).
 	 */
 	if (sv_black && tbl->root)
-		tfw_hpack_rbtree_del_rebalance(tbl, nchild, parent, left_child);
+		tfw_hpack_rbtree_del_rebalance(tbl, nchild, parent);
 }
 
 static inline void
