@@ -2620,6 +2620,7 @@ tfw_hpack_rbtree_del_rebalance(TfwHPackETbl *__restrict tbl,
 			{
 				HPACK_RB_SET_RED(brother);
 				nchild = parent;
+				parent = HPACK_NODE_COND(tbl, nchild->parent);
 			}
 			else
 			{
@@ -2657,6 +2658,7 @@ tfw_hpack_rbtree_del_rebalance(TfwHPackETbl *__restrict tbl,
 			{
 				HPACK_RB_SET_RED(brother);
 				nchild = parent;
+				parent = HPACK_NODE_COND(tbl, nchild->parent);
 			}
 			else
 			{
